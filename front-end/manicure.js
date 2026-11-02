@@ -1,300 +1,453 @@
 document.addEventListener('DOMContentLoaded', () => {
+    const API_BASE = window.API_BASE_URL || 'http://localhost:3000';
+    const catalogUrl = `${API_BASE}/servicos`;
+    const apiStatus = document.getElementById('api-status');
+    const modalAgendamento = document.getElementById('modal-agendamento');
+    const formColeta = document.getElementById('form-coleta-dados');
+    const allowedCities = new Set(['Mauá', 'Santo André', 'São Caetano do Sul', 'Ribeirão Pires', 'Capuava']);
+    let agendamentoPendente = null;
 
-    // --- 1. CONFIGURAÇÃO DOS CARROSSÉIS ---
-    function inicializarCarrossel(idContainer) {
-        const container = document.getElementById(idContainer);
-        const slidesTrack = container.querySelector('.carousel-slides');
-        const slides = container.querySelectorAll('.slide');
-        const nextBtn = container.querySelector('.next');
-        const prevBtn = container.querySelector('.prev');
-   
+    const normalize = (value) => String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
 
-        let agendamentoPendente = {};
-        
-        let indexAtual = 0;
-        
-        // Carrossel Automático
-        let autoPlay = setInterval(() => mover(indexAtual + 1), 3000);
-
-        function mover(index) {
-            indexAtual = (index + slides.length) % slides.length;
-            slidesTrack.style.transform = `translateX(-${indexAtual * 100}%)`;
+    const serviceGroups = {
+        manicure: {
+            selectId: 'servico-unha',
+            services: [
+                { label: 'Unha decorada', aliases: ['unha decorada'] },
+                { label: 'Pé e mão simples', aliases: ['pe e mao simples', 'pe e mao'] },
+                { label: 'Pé', aliases: ['pedicure', 'pe simples', 'pe'] },
+                { label: 'Mão', aliases: ['mao simples', 'mao'] },
+                { label: 'Unha em gel', aliases: ['unha em gel', 'unha de gel'] },
+                { label: 'Unha de fibra', aliases: ['unha de fibra', 'fibra de vidro'] },
+                { label: 'Unha de acrílico', aliases: ['unha de acrilico', 'acrilico'] }
+            ]
+        },
+        sobrancelha: {
+            selectId: 'servico-sobrancelha',
+            services: [
+                { label: 'Design de sobrancelha', aliases: ['design de sobrancelha', 'design sobrancelha'] },
+                { label: 'Henna', aliases: ['henna'] },
+                { label: 'Microblading', aliases: ['microblading'] },
+                { label: 'Sobrancelha fio a fio', aliases: ['sobrancelha fio a fio', 'fio a fio'] }
+            ]
+        },
+        maquiagem: {
+            selectId: 'servico-maquiagem',
+            variants: [
+                { label: 'Maquiagem social', aliases: ['maquiagem'] },
+                { label: 'Maquiagem para noiva', aliases: ['maquiagem'] },
+                { label: 'Maquiagem para debutante', aliases: ['maquiagem'] }
+            ]
+        },
+        cabelos: {
+            selectId: 'servico-cabelos',
+            services: [
+                { label: 'Penteado', aliases: ['penteado', 'penteados'] },
+                { label: 'Corte', aliases: ['cabelo'] },
+                { label: 'Loiro iluminado', aliases: ['cabelo'] },
+                { label: 'Morena iluminada', aliases: ['cabelo'] },
+                { label: 'Luzes', aliases: ['cabelo'] }
+            ]
         }
-        // Função para travar/parar o autoplay quando o usuário escolher manualmente
-        function pararAutoPlay() {
-            clearInterval(autoPlay);
-        }
+    };
 
-        // Interação manual
-        nextBtn.addEventListener('click', () => { 
-            pararAutoPlay();
-            clearInterval(autoPlay); 
-            mover(indexAtual + 1); 
+    function findService(catalog, aliases) {
+        const normalizedAliases = aliases.flatMap((alias) => {
+            const normalizedAlias = normalize(alias);
+            return [normalizedAlias, `${normalizedAlias}s`];
         });
-        
-        prevBtn.addEventListener('click', () => { 
-            pararAutoPlay();
-            clearInterval(autoPlay); 
-            mover(indexAtual - 1); 
-        });
-
-        return { mover, pararAutoPlay }; // Retorna a função para o select controlar
+        return catalog.find((service) => normalizedAliases.includes(normalize(service.nome_servico)));
     }
 
- // Inicializa carrosséis e guarda as referências
-    const carrosselUnhas = inicializarCarrossel('carousel-unhas');
-    const carrosselSobrancelhas = inicializarCarrossel('carousel-sobrancelhas');
-     // --- 2. LÓGICA DO FORMULÁRIO DE COLETA (GLOBAL) ---
-    const formColeta = document.getElementById('form-coleta-dados');
-    const modalContainer = document.getElementById('modal-agendamento');
-        
-    // Lógica do Formulário de Coleta
-    if (formColeta) {
-        formColeta.addEventListener('submit', async (e) => {
-            e.preventDefault();
-        
-        const dados = {
-            cliente_nome: document.getElementById('cli-nome').value,
-            telefone: document.getElementById('cli-tel').value,
-            email: document.getElementById('cli-email').value,
-            endereco: document.getElementById('cli-end').value,
-            cpf: document.getElementById('cli-cpf').value,
-            cidade: document.getElementById('cli-cidade').value,
-            cep: document.getElementById('cli-cep').value,
-            ...(window.agendamentoPendente || {})
-        };
+    function formatPrice(value) {
+        const price = Number(value);
+        return Number.isFinite(price)
+            ? ` - ${price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`
+            : '';
+    }
 
-     try {
-                const response = await fetch('http://localhost:3000/tbl_clientes', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(dados)
+    function formatDuration(value) {
+        if (!value) return '';
+        const [hours = 0, minutes = 0] = String(value).split(':').map(Number);
+        const duration = [hours ? `${hours} h` : '', minutes ? `${minutes} min` : ''].filter(Boolean).join(' ');
+        return duration ? ` · ${duration}` : '';
+    }
+
+    function setServiceOption(select, service, label) {
+        const option = document.createElement('option');
+        option.value = String(service.id_servico);
+        option.textContent = `${label}${formatPrice(service.preco)}${formatDuration(service.duracao_estimada)}`;
+        option.dataset.serviceName = service.nome_servico;
+        option.dataset.duration = String(durationSeconds(service.duracao_estimada));
+        select.appendChild(option);
+    }
+
+    function durationSeconds(value) {
+        const [hours = 0, minutes = 0, seconds = 0] = String(value || '').split(':').map(Number);
+        return hours * 3600 + minutes * 60 + seconds;
+    }
+
+    function populateServiceSelects(catalog) {
+        Object.entries(serviceGroups).forEach(([group, config]) => {
+            const select = document.getElementById(config.selectId);
+            select.replaceChildren(new Option('Escolha um serviço...', ''));
+
+            if (group === 'maquiagem') {
+                const service = findService(catalog, ['maquiagem']);
+                if (service) {
+                    config.variants.forEach((variant) => setServiceOption(select, service, variant.label));
+                }
+            } else {
+                config.services.forEach((definition) => {
+                    const service = findService(catalog, definition.aliases);
+                    if (service) setServiceOption(select, service, definition.label);
+                });
+            }
+
+            if (group === 'cabelos') {
+                const penteados = findService(catalog, ['penteado', 'penteados']);
+                if (penteados && !Array.from(select.options).some((option) => option.value === String(penteados.id_servico))) {
+                    setServiceOption(select, penteados, 'Penteado');
+                }
+            }
+
+            const hasServices = select.options.length > 1;
+            select.disabled = !hasServices;
+            if (!hasServices) {
+                select.replaceChildren(new Option('Serviços indisponíveis no cadastro do banco', ''));
+            }
+        });
+    }
+
+    function initializeCarousel(container) {
+        const track = container.querySelector('.carousel-slides');
+        const slides = Array.from(container.querySelectorAll('.slide'));
+        const previous = container.querySelector('.prev');
+        const next = container.querySelector('.next');
+        let current = 0;
+
+        function moveTo(index) {
+            current = (index + slides.length) % slides.length;
+            track.style.transform = `translateX(-${current * 100}%)`;
+        }
+
+        previous.addEventListener('click', () => moveTo(current - 1));
+        next.addEventListener('click', () => moveTo(current + 1));
+    }
+
+    document.querySelectorAll('.carousel-container').forEach(initializeCarousel);
+
+    function localDateString(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
+    function configureScheduling(group, config) {
+        const select = document.getElementById(config.selectId);
+        const appointment = document.getElementById(`agendamento-${group === 'manicure' ? 'unha' : group === 'cabelos' ? 'cabelos' : group}`);
+        const dateInput = document.getElementById(`data-${group === 'manicure' ? 'unha' : group}`);
+        const timeGrid = document.getElementById(`horarios-${group === 'manicure' ? 'unha' : group}`);
+        const continueButton = document.getElementById(`btn-agendar-${group === 'manicure' ? 'unha' : group}`);
+        const today = new Date();
+        const maxDate = new Date(today);
+        maxDate.setMonth(maxDate.getMonth() + 1);
+        dateInput.min = localDateString(today);
+        dateInput.max = localDateString(maxDate);
+
+        select.addEventListener('change', () => {
+            appointment.classList.remove('hidden');
+            dateInput.value = '';
+            timeGrid.replaceChildren();
+            continueButton.classList.add('hidden');
+            delete continueButton.dataset.time;
+        });
+
+        dateInput.addEventListener('change', async () => {
+            timeGrid.replaceChildren();
+            continueButton.classList.add('hidden');
+            delete continueButton.dataset.time;
+            if (!dateInput.value) return;
+
+            const selectedDate = new Date(`${dateInput.value}T00:00:00`);
+            if (selectedDate.getDay() === 1) {
+                timeGrid.append(document.createTextNode('Não abrimos às segundas-feiras.'));
+                return;
+            }
+
+            const selectedService = select.options[select.selectedIndex];
+            if (!select.value) return;
+            timeGrid.append(document.createTextNode('Consultando horários...'));
+            const checkDate = dateInput.value;
+            const serviceId = select.value;
+            let reservations;
+            try {
+                const response = await fetch(
+                    `${API_BASE}/horarios?id_servico=${encodeURIComponent(serviceId)}&data=${encodeURIComponent(checkDate)}`
+                );
+                const result = await response.json();
+                if (!response.ok) throw new Error(result.erro || 'Não foi possível consultar os horários.');
+                reservations = result;
+            } catch (error) {
+                console.error('Erro ao carregar horários disponíveis:', error);
+                timeGrid.replaceChildren(document.createTextNode('Não foi possível consultar os horários. Tente novamente.'));
+                return;
+            }
+
+            if (dateInput.value !== checkDate || select.value !== serviceId) return;
+            timeGrid.replaceChildren();
+            const now = new Date();
+            const startHour = selectedDate.getDay() === 0 || selectedDate.getDay() === 6 ? 10 : 9;
+            const endHour = selectedDate.getDay() === 0 || selectedDate.getDay() === 6 ? 15 : 18;
+            const earliestTime = new Date(now.getTime() + 2 * 60 * 60 * 1000);
+            const serviceDuration = Number(selectedService.dataset.duration);
+            let availableCount = 0;
+            let offeredCount = 0;
+
+            for (let hour = startHour; hour < endHour; hour += 1) {
+                const time = `${String(hour).padStart(2, '0')}:00`;
+                const slot = new Date(`${dateInput.value}T${time}:00`);
+                if (hour === 13 || slot < earliestTime) continue;
+                const slotEnd = new Date(slot.getTime() + serviceDuration * 1000);
+                if (slotEnd.getHours() > endHour || (slotEnd.getHours() === endHour && slotEnd.getMinutes() > 0)) continue;
+                offeredCount += 1;
+                const isReserved = reservations.some((reservation) => {
+                    const [busyHour, busyMinute] = reservation.hora.split(':').map(Number);
+                    const busyStart = new Date(`${dateInput.value}T${String(busyHour).padStart(2, '0')}:${String(busyMinute).padStart(2, '0')}:00`);
+                    const busyEnd = new Date(busyStart.getTime() + Number(reservation.duracao_segundos) * 1000);
+                    return slot < busyEnd && slotEnd > busyStart;
                 });
 
-                const res = await response.json().catch(() => ({}));
-
-                // Considera sucesso se o status HTTP for 2xx ou se a API retornar sucesso
-                if (response.ok) {
-                    alert("Agendamento realizado com sucesso! Entraremos em contato em breve.");
-                    
-                    // Fecha o modal e limpa os campos
-                    if (modalContainer) {
-                        modalContainer.classList.add('hidden');
-                        modalContainer.setAttribute('aria-hidden', 'true');
-                    }
-                    formColeta.reset();
-                    window.agendamentoPendente = null;
-
-                    // Opcional: recarrega após fechar para resetar os estados da tela
-                    setTimeout(() => location.reload(), 500);
-                } else {
-                    alert("Erro: " + (res.erro || "Falha ao salvar dados no servidor."));
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'hora-btn';
+                button.textContent = time;
+                if (isReserved) {
+                    button.disabled = true;
+                    button.classList.add('reservado');
+                    button.textContent = `${time} · reservado`;
+                    button.setAttribute('aria-label', `${time}, horário reservado`);
                 }
-            } catch (err) {
-                console.error(err);
-                alert("Erro de conexão com o servidor. Verifique se a API está rodando.");
+                button.addEventListener('click', () => {
+                    timeGrid.querySelectorAll('.hora-btn').forEach((item) => item.classList.remove('selected'));
+                    button.classList.add('selected');
+                    continueButton.dataset.time = time;
+                    continueButton.classList.remove('hidden');
+                });
+                timeGrid.append(button);
+                if (!isReserved) availableCount += 1;
+            }
+
+            if (!offeredCount) timeGrid.append(document.createTextNode('Não há horários disponíveis nesta data.'));
+            else if (!availableCount) {
+                const message = document.createElement('p');
+                message.className = 'horarios-indisponiveis';
+                message.textContent = 'Todos os horários deste serviço já estão reservados.';
+                timeGrid.append(message);
             }
         });
-    }
-   
-   
 
-    // --- 2. LÓGICA DE AGENDAMENTO ---
-    function configurarAgendamento(idSelect, idAgendamentoCont, idData, idHorarios, idBtnConfirmar, carrosselObj) {
-        const selectServico = document.getElementById(idSelect);
-        const containerAgendamento = document.getElementById(idAgendamentoCont);
-        const inputData = document.getElementById(idData);
-        const gridHorarios = document.getElementById(idHorarios);
-        const btnConfirmar = document.getElementById(idBtnConfirmar);
-        
-        // Mapeamento de serviço para índice do slide
-     const mapaIndices = {
-    "decorada": 0,
-    "peemao": 1,
-    "pedicure": 2,
-    "mao": 3,
-    "unhadegel": 4,
-    "unhadefibra": 5,
-    "unhaacrilico": 6,
-    "design": 0, // Ajuste conforme a seção de sobrancelhas se necessário
-    "henna": 1,
-    "microblading": 2,
-    "sobrancelha-fio-a-fio": 3
-};
-        // Limitar datas em 1 mes
-        const hoje = new Date();
-        const dataMaxima = new Date();
-        dataMaxima.setMonth(hoje.getMonth() + 1);
-        inputData.setAttribute('min', hoje.toISOString().split('T')[0]);
-        inputData.setAttribute('max', dataMaxima.toISOString().split('T')[0]);
-
-        selectServico.addEventListener('change', (e) => {
-            // Mostra galeria e para o automático no slide correspondente
-            const opcaoSelecionada = e.target.options[e.target.selectedIndex];
-    const chave = opcaoSelecionada.getAttribute('data-chave');
-            // Move o carrossel para o índice correspondente
-    if(carrosselObj) {
-        carrosselObj.pararAutoPlay();
-        carrosselObj.mover(mapaIndices[chave] || 0);
-    }
-    
-    containerAgendamento.classList.remove('hidden');
-});
-
-        // Evento de selecionar data
-        inputData.addEventListener('change', (e) => {
-            gerarHorarios(e.target.value);
-            btnConfirmar.classList.add('hidden');
+        continueButton.addEventListener('click', () => {
+            if (!select.value || !dateInput.value || !continueButton.dataset.time) return;
+            const option = select.options[select.selectedIndex];
+            agendamentoPendente = {
+                id_servico: Number(select.value),
+                data_agenda: `${dateInput.value} ${continueButton.dataset.time}:00`,
+                servico: option.textContent,
+                group
+            };
+            modalAgendamento.classList.remove('hidden');
+            modalAgendamento.setAttribute('aria-hidden', 'false');
+            document.getElementById('cli-nome').focus();
         });
-
-        function gerarHorarios(dataStr) {
-            gridHorarios.innerHTML = '';
-            if (!dataStr) return;
-
-            const agora = new Date();
-// Ajusta para o fuso horário local corretamente
-    const dataSelecionada = new Date(dataStr + 'T00:00:00');
-    const diaSemana = dataSelecionada.getDay();
-    
-    // Regra de bloqueio da segunda-feira
-    if (diaSemana === 1) {
-        gridHorarios.innerHTML = '<p>Estamos fechados às segundas-feiras.</p>';
-        return;
     }
 
-    const horaInicio = (diaSemana === 0 || diaSemana === 6) ? 10 : 9;
-    const horaFim = (diaSemana === 0 || diaSemana === 6) ? 15 : 18;
+    Object.entries(serviceGroups).forEach(([group, config]) => configureScheduling(group, config));
 
-    // Calcula a hora mínima (agora + 2 horas)
-    const dataLimite = new Date(agora.getTime() + (2 * 60 * 60 * 1000));
-    
-    // Verifica se a data selecionada é hoje
-    const isHoje = dataStr === agora.toISOString().split('T')[0];
+    function closeModal(modal) {
+        modal.classList.add('hidden');
+        modal.setAttribute('aria-hidden', 'true');
+    }
 
-    for (let hora = horaInicio; hora < horaFim; hora++) {
-        // 1. Regra do Almoço
-        if (hora === 13) continue;
+    document.querySelectorAll('.modal-fechar').forEach((button) => {
+        button.addEventListener('click', () => closeModal(button.closest('.modal')));
+    });
 
-        // 2. Regra das 2 horas de antecedência//
-        if (isHoje && hora < dataLimite.getHours()) {
-            continue; // Pula horários que já passaram ou estão dentro das 2h de tolerância
+    document.querySelectorAll('.modal').forEach((modal) => {
+        modal.addEventListener('click', (event) => {
+            if (event.target !== modal) return;
+            if (modal.id === 'modal-obrigado') returnToHome();
+            else closeModal(modal);
+        });
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            document.querySelectorAll('.modal:not(.hidden)').forEach((modal) => {
+                if (modal.id === 'modal-obrigado') returnToHome();
+                else closeModal(modal);
+            });
         }
+    });
 
-        const btn = document.createElement('button');
-        btn.className = 'hora-btn';
-        btn.innerText = `${String(hora).padStart(2, '0')}:00`;
-        
-        btn.onclick = () => {
-            gridHorarios.querySelectorAll('.hora-btn').forEach(b => b.classList.remove('selected'));
-            btn.classList.add('selected');
-            btnConfirmar.classList.remove('hidden');
-            btnConfirmar.dataset.hora = btn.innerText;
-        };
-        gridHorarios.appendChild(btn);
+    function returnToHome() {
+        closeModal(document.getElementById('modal-obrigado'));
+        Object.entries(serviceGroups).forEach(([group, config]) => {
+            const select = document.getElementById(config.selectId);
+            const suffix = group === 'manicure' ? 'unha' : group;
+            document.getElementById(`agendamento-${suffix}`).classList.add('hidden');
+            document.getElementById(`data-${suffix}`).value = '';
+            document.getElementById(`horarios-${suffix}`).replaceChildren();
+            const continueButton = document.getElementById(`btn-agendar-${suffix}`);
+            continueButton.classList.add('hidden');
+            delete continueButton.dataset.time;
+            select.selectedIndex = 0;
+        });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    if (gridHorarios.innerHTML === '') {
-        gridHorarios.innerHTML = '<p>Não há horários disponíveis para hoje.</p>';
+    document.getElementById('btn-voltar-inicio').addEventListener('click', returnToHome);
+
+    function inputValue(id) {
+        return document.getElementById(id).value.trim();
     }
-            
-        }
 
-  
-
-        btnConfirmar.addEventListener('click', () => {
-            const opcaoSelecionada = selectServico.options[selectServico.selectedIndex];
-            const chave = opcaoSelecionada.getAttribute('data-chave');
-            
-            // Mapeamento dos IDs numéricos dos serviços no banco (ajuste os números conforme sua tabela id_servico)
-            const mapaIdsServicos = {
-              "decorada": 0,"peemao": 1, "pedicure": 2,"mao": 3,"unhadegel":4 ,"unhadefibra": 5, "unhaacrilico": 6, 
-            "design": 7, "henna": 8, "microblading": 9, "sobrancelha-fio-a-fio": 10
-            };
-
-            // Salva os dados pendentes para enviar no submit do formulário de cadastro
-            window.agendamentoPendente = {
-                id_servico: mapaIdsServicos[chave] || Number(selectServico.value) || 1,
-                data_agenda: `${inputData.value} ${btnConfirmar.dataset.hora}:00`
-            };
-
-            // Encontra e exibe o modal de cadastro de clientes que está escondido no HTML
-            const modalContainer = document.getElementById('modal-agendamento');
-            if (modalContainer) {
-                modalContainer.classList.remove('hidden');
-                modalContainer.setAttribute('aria-hidden', 'false');
+    if (formColeta) {
+        formColeta.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            if (!agendamentoPendente) {
+                alert('Selecione um serviço, uma data e um horário antes de continuar.');
+                return;
             }
-        });
-    }
 
-    // Inicializa lógica para as duas seções passando o objeto do carrossel correspondente
-    configurarAgendamento('servico-unha', 'agendamento-unha', 'data-unha', 'horarios-unha', 'btn-agendar-unha', carrosselUnhas);
-    configurarAgendamento('servico-sobrancelha', 'agendamento-sobrancelha', 'data-sobrancelha', 'horarios-sobrancelha', 'btn-agendar-sobrancelha', carrosselSobrancelhas);
-// --- 4. LÓGICA DE CONSULTA DE RESERVAS ---
-    const btnAbrirConsulta = document.getElementById('btn-consultar-reserva');
-    const modalConsulta = document.getElementById('modal-consulta');
-    const btnFecharConsulta = document.getElementById('fechar-consulta');
-    const formConsulta = document.getElementById('form-consulta');
-    const inputConsultaNome = document.getElementById('consulta-nome');
-    const divResultadoConsulta = document.getElementById('resultado-consulta');
+            const city = inputValue('cli-cidade');
+            if (!allowedCities.has(city)) {
+                alert('No momento, atendemos somente Mauá, Santo André, São Caetano do Sul, Ribeirão Pires e Capuava.');
+                return;
+            }
 
-    if (btnAbrirConsulta && modalConsulta) {
-        btnAbrirConsulta.addEventListener('click', () => {
-            modalConsulta.classList.remove('hidden');
-            modalConsulta.setAttribute('aria-hidden', 'false');
-        });
-    }
-
-    if (btnFecharConsulta && modalConsulta) {
-        btnFecharConsulta.addEventListener('click', () => {
-            modalConsulta.classList.add('hidden');
-            modalConsulta.setAttribute('aria-hidden', 'true');
-            divResultadoConsulta.innerHTML = '';
-            inputConsultaNome.value = '';
-        });
-    }
-
-    if (formConsulta) {
-        formConsulta.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const nomeCliente = inputConsultaNome.value.trim();
-            
-            if (!nomeCliente) return;
-
-            divResultadoConsulta.innerHTML = '<p>Buscando reservas...</p>';
+            const submitButton = formColeta.querySelector('button[type="submit"]');
+            submitButton.disabled = true;
+            submitButton.textContent = 'Enviando...';
+            const data = {
+                cliente_nome: inputValue('cli-nome'),
+                telefone: inputValue('cli-tel'),
+                email: inputValue('cli-email'),
+                endereco: inputValue('cli-end'),
+                cpf: inputValue('cli-cpf'),
+                cidade: city,
+                cep: inputValue('cli-cep'),
+                id_servico: agendamentoPendente.id_servico,
+                data_agenda: agendamentoPendente.data_agenda
+            };
 
             try {
-                const response = await fetch(`http://localhost:3000/detalhe_agendamento?Nome=${encodeURIComponent(nomeCliente)}`);
-                const resultados = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(resultados.erro || 'Erro ao consultar reservas.');
-                }
-
-                if (resultados.length === 0) {
-                    divResultadoConsulta.innerHTML = '<p>Nenhuma reserva encontrada para este nome.</p>';
-                    return;
-                }
-
-                let html = '<ul style="list-style: none; padding: 0; margin-top: 15px;">';
-                resultados.forEach(reserva => {
-                    const dataFormatada = new Date(reserva.Data_servico).toLocaleString('pt-BR');
-                    html += `
-                        <li style="background: #f9f9f9; padding: 10px; margin-bottom: 8px; border-radius: 5px; border: 1px solid #ddd;">
-                            <strong>Cliente:</strong> ${reserva.Nome} <br>
-                            <strong>Serviço:</strong> ${reserva.Servico} <br>
-                            <strong>Data/Hora:</strong> ${dataFormatada} <br>
-                            <strong>Profissional:</strong> ${reserva.Profissional}
-                        </li>
-                    `;
+                const response = await fetch(`${API_BASE}/tbl_clientes`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
                 });
-                html += '</ul>';
+                const result = await response.json();
+                if (!response.ok) {
+                    if (response.status === 409 && agendamentoPendente) {
+                        const pending = agendamentoPendente;
+                        const suffix = pending.group === 'manicure' ? 'unha' : pending.group;
+                        document.getElementById(`data-${suffix}`).dispatchEvent(new Event('change'));
+                    }
+                    throw new Error(result.erro || 'Não foi possível concluir o agendamento.');
+                }
 
-                divResultadoConsulta.innerHTML = html;
+                closeModal(modalAgendamento);
+                formColeta.reset();
+                agendamentoPendente = null;
+                document.getElementById('modal-obrigado').classList.remove('hidden');
+                document.getElementById('modal-obrigado').setAttribute('aria-hidden', 'false');
+                document.getElementById('btn-voltar-inicio').focus();
             } catch (error) {
-                divResultadoConsulta.innerHTML = `<p style="color: red;">${error.message}</p>`;
+                console.error('Erro ao criar agendamento:', error);
+                alert(error.message || 'Erro de conexão com o servidor. Verifique se a API está em execução.');
+            } finally {
+                submitButton.disabled = false;
+                submitButton.textContent = 'Confirmar agendamento';
             }
         });
     }
+
+    const consultationModal = document.getElementById('modal-consulta');
+    const consultationButton = document.getElementById('btn-consultar-reserva');
+    const consultationForm = document.getElementById('form-consulta');
+    const consultationResult = document.getElementById('resultado-consulta');
+
+    consultationButton.addEventListener('click', () => {
+        consultationModal.classList.remove('hidden');
+        consultationModal.setAttribute('aria-hidden', 'false');
+        document.getElementById('consulta-nome').focus();
+    });
+
+    consultationForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const name = inputValue('consulta-nome');
+        consultationResult.textContent = 'Buscando reservas...';
+
+        try {
+            const response = await fetch(`${API_BASE}/detalhe_agendamento?Nome=${encodeURIComponent(name)}`);
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.erro || 'Erro ao consultar reservas.');
+            consultationResult.replaceChildren();
+            if (!result.length) {
+                consultationResult.textContent = 'Nenhuma reserva encontrada para este nome.';
+                return;
+            }
+
+            result.forEach((reservation) => {
+                const card = document.createElement('article');
+                card.className = 'resultado-reserva';
+                const fields = [
+                    ['Cliente', reservation.Nome],
+                    ['Serviço', reservation.Servico],
+                    ['Data/Hora', reservation.Data_servico ? new Date(reservation.Data_servico).toLocaleString('pt-BR') : ''],
+                    ['Profissional', reservation.Profissional]
+                ];
+                fields.forEach(([label, value]) => {
+                    if (value === undefined || value === null || value === '') return;
+                    const line = document.createElement('p');
+                    const strong = document.createElement('strong');
+                    strong.textContent = `${label}: `;
+                    line.append(strong, document.createTextNode(String(value)));
+                    card.append(line);
+                });
+                consultationResult.append(card);
+            });
+        } catch (error) {
+            console.error('Erro ao consultar reservas:', error);
+            consultationResult.textContent = error.message || 'Não foi possível consultar as reservas.';
+        }
+    });
+
+    fetch(catalogUrl)
+        .then(async (response) => {
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.erro || 'Não foi possível carregar os serviços.');
+            if (!Array.isArray(result)) throw new Error('A API retornou um catálogo de serviços inválido.');
+            populateServiceSelects(result);
+            apiStatus.textContent = result.length
+                ? 'Valores e serviços atualizados conforme o cadastro do salão.'
+                : 'Nenhum serviço foi encontrado no cadastro do banco.';
+            if (!result.length) apiStatus.classList.add('error');
+        })
+        .catch((error) => {
+            console.error('Erro ao carregar catálogo de serviços:', error);
+            apiStatus.textContent = 'Não foi possível conectar ao catálogo de serviços. Verifique a API e o banco de dados.';
+            apiStatus.classList.add('error');
+            Object.values(serviceGroups).forEach((config) => {
+                const select = document.getElementById(config.selectId);
+                select.replaceChildren(new Option('Serviços indisponíveis — tente novamente mais tarde', ''));
+                select.disabled = true;
+            });
+        });
 });
-
-
