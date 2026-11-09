@@ -1,4 +1,4 @@
-const apiBase = 'http://localhost:3000';
+const apiBase = 'https://cinemark-z3wn.onrender.com';
 
 document.addEventListener('DOMContentLoaded', () => {
     const carrosseis = new Map();
