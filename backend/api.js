@@ -21,7 +21,7 @@ const db = mysql.createPool({
     port: Number(process.env.DB_PORT) || 3306,
     user: process.env.DB_USER,
     password: process.env.DB_PASS,
-    database: 'mydb', 
+    database: process.env.DB_NAME_MYDB, 
     ssl: {
         rejectUnauthorized: true,
         ...(certificadoCa ? { ca: certificadoCa } : {})
