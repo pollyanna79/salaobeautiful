@@ -21,7 +21,7 @@ const db = mysql.createPool({
     port: Number(process.env.DB_PORT) || 3306,
     user: process.env.DB_USER,
     password: process.env.DB_PASS,
-    database: process.env.DB_NAME_MYDB || process.env.DB_NAME,
+    database: 'mydb', 
     ssl: {
         rejectUnauthorized: true,
         ...(certificadoCa ? { ca: certificadoCa } : {})
@@ -50,10 +50,11 @@ app.get('/detalhe_agendamento', (req, res) => {
     }
 
     const nomeBusca = `%${busca.replace(/[\\%_]/g, '\\$&')}%`;
-    const sql = `
+
+  const sql = `
         SELECT reservas.*
-        FROM mydb.detalhe_agendamento AS reservas
-        INNER JOIN mydb.tbl_clientes AS clientes
+        FROM detalhe_agendamento AS reservas
+        INNER JOIN tbl_clientes AS clientes
             ON clientes.idclientes = reservas.Cod
         WHERE LOWER(TRIM(clientes.email)) = LOWER(TRIM(?))
            OR LOWER(TRIM(clientes.cliente_nome)) LIKE LOWER(?)
