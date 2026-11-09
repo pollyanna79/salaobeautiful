@@ -10,19 +10,22 @@ app.use(cors());
 app.use(express.json());
 
 // 1. Criando a ponte (conexão) com o MySQL
-const db = mysql.createConnection({
+const db = mysql.createPool({
     host: process.env.DB_HOST ,
     user: process.env.DB_USER ,
     password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME 
+    database: process.env.DB_NAME,
+    waitForConnections: true,
+    connectionLimit: 10
 });
 
 // Testando a conexão com o banco
-db.connect((err) => {
+db.getConnection((err, connection) => {
     if (err) {
         console.error('Erro ao conectar ao banco de dados MySQL:', err);
         return;
     }
+    connection.release();
     console.log('Conectado ao MySQL com sucesso!');
 });
 
@@ -96,6 +99,53 @@ function cidadeAtendida(cidadeInformada, cidadeCep) {
     return cidadesAtendidas.has(cidadeCanonica) && cidadeCanonica === municipioCep;
 }
 
+function normalizarDataAgenda(valor) {
+    const partes = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/.exec(String(valor || ''));
+    if (!partes) return null;
+
+    const [, ano, mes, dia, hora, minuto, segundo = '00'] = partes;
+    const data = new Date(Date.UTC(Number(ano), Number(mes) - 1, Number(dia)));
+    if (
+        data.getUTCFullYear() !== Number(ano)
+        || data.getUTCMonth() !== Number(mes) - 1
+        || data.getUTCDate() !== Number(dia)
+        || Number(hora) > 23
+        || Number(minuto) > 59
+        || Number(segundo) > 59
+    ) {
+        return null;
+    }
+
+    return `${ano}-${mes}-${dia} ${hora}:${minuto}:${segundo}`;
+}
+
+app.get('/horarios_ocupados', (req, res) => {
+    const idServico = Number(req.query.id_servico);
+    const data = String(req.query.data || '');
+    if (!Number.isInteger(idServico) || idServico < 1 || !/^\d{4}-\d{2}-\d{2}$/.test(data)) {
+        return res.status(400).json({ erro: 'Informe um serviço e uma data válidos.' });
+    }
+
+    const inicio = `${data} 00:00:00`;
+    const sql = `
+        SELECT DATE_FORMAT(data_agenda, '%H:%i') AS horario
+        FROM agenda_cliente
+        WHERE id_servico = ?
+          AND data_agenda >= NOW()
+          AND data_agenda >= ?
+          AND data_agenda < DATE_ADD(?, INTERVAL 1 DAY)
+        ORDER BY data_agenda
+    `;
+
+    db.query(sql, [idServico, inicio, inicio], (err, resultados) => {
+        if (err) {
+            console.error('Erro ao consultar horários ocupados:', err);
+            return res.status(500).json({ erro: 'Não foi possível consultar os horários disponíveis.' });
+        }
+        res.json({ horarios: resultados.map((resultado) => resultado.horario) });
+    });
+});
+
 async function validarCepCidade(cep, cidade) {
     if (!/^\d{8}$/.test(cep)) {
         return { valido: false, status: 400, erro: 'Informe um CEP válido com 8 números.' };
@@ -157,7 +207,7 @@ app.post('/tbl_clientes', async (req, res) => {
     cidade = String(cidade || '').trim();
     cep = String(cep || '').replace(/\D/g, '');
 
-    if (!cliente_nome || !telefone || !email || !endereco || !cpf || !cidade || !cep || !Number.isInteger(Number(id_servico)) || !data_agenda) {
+    if (!cliente_nome || !telefone || !email || !endereco || !cpf || !cidade || !cep || !Number.isInteger(Number(id_servico)) || Number(id_servico) < 1 || !data_agenda) {
         return res.status(400).json({ status: 'erro', erro: 'Preencha todos os dados da reserva.' });
     }
 
@@ -175,66 +225,82 @@ app.post('/tbl_clientes', async (req, res) => {
     }
     cidade = validacaoEndereco.cidade;
 
-    // Se a data vier no formato HTML datetime-local ou com 'T' (ex: "2026-08-21T14:00"), 
-    // nós substituímos o 'T' por espaço para o MySQL aceitar no tipo DATETIME.
-    if (data_agenda.includes('T')) {
-        data_agenda = data_agenda.replace('T', ' ');
-        if (data_agenda.length === 16) {
-            data_agenda += ':00'; // Adiciona os segundos se não vierem
-        }
-    } 
-    // Se o front-end mandar apenas a data sem horário (ex: "2026-08-21"), colocamos 10:00 como segurança
-    else if (data_agenda.length === 10) {
-        data_agenda += " 10:00:00"; 
+    data_agenda = normalizarDataAgenda(data_agenda);
+    if (!data_agenda) {
+        return res.status(400).json({ status: 'erro', erro: 'Informe uma data e um horário válidos para a reserva.' });
     }
 
     const sqlCliente = `
         INSERT INTO tbl_clientes (cliente_nome, telefone, email, endereco, cpf, cidade, cep) 
         VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
+    const sqlAgenda = `
+        INSERT INTO agenda_cliente (data_agenda, id_servico, id_cliente)
+        VALUES (?, ?, ?)
+    `;
+    const nomeBloqueio = `agenda:${Number(id_servico)}:${data_agenda}`;
+    let connection;
+    let bloqueioAdquirido = false;
+    let transacaoIniciada = false;
 
-    db.beginTransaction((transactionError) => {
-        if (transactionError) {
-            return res.status(500).json({ status: 'erro', erro: 'Não foi possível iniciar a reserva.' });
+    try {
+        connection = await db.promise().getConnection();
+        const [bloqueios] = await connection.query('SELECT GET_LOCK(?, 10) AS adquirido', [nomeBloqueio]);
+        if (Number(bloqueios[0].adquirido) !== 1) {
+            return res.status(503).json({
+                status: 'erro',
+                erro: 'Não foi possível confirmar a disponibilidade agora. Tente novamente.'
+            });
+        }
+        bloqueioAdquirido = true;
+
+        await connection.beginTransaction();
+        transacaoIniciada = true;
+        const [reservasExistentes] = await connection.query(
+            'SELECT id FROM agenda_cliente WHERE id_servico = ? AND data_agenda = ? AND data_agenda >= NOW() LIMIT 1',
+            [Number(id_servico), data_agenda]
+        );
+        if (reservasExistentes.length > 0) {
+            await connection.rollback();
+            transacaoIniciada = false;
+            return res.status(409).json({
+                status: 'erro',
+                erro: 'Este horário acabou de ser reservado. Escolha outro horário disponível.'
+            });
         }
 
-        db.query(sqlCliente, [cliente_nome, telefone, email, endereco, cpf, cidade, cep], (err, resultadoCliente) => {
-            if (err) {
-                console.error('Erro ao salvar cliente:', err);
-                return db.rollback(() => {
-                    res.status(500).json({ status: 'erro', erro: 'Erro ao cadastrar cliente no banco.' });
-                });
-            }
-
-            const idCliente = resultadoCliente.insertId;
-
-          const sqlAgenda = `
-                INSERT INTO agenda_cliente (data_agenda, id_servico, id_cliente) 
-                VALUES (?, ?, ?)
-            `;
-
-            db.query(sqlAgenda, [data_agenda, Number(id_servico), idCliente], (err, resultadoAgenda) => {
-                if (err) {
-                    console.error('Erro ao salvar agenda:', err);
-                    return db.rollback(() => {
-                        res.status(500).json({ status: 'erro', erro: 'Erro ao salvar a reserva na agenda.' });
-                    });
-                }
-
-                db.commit((commitError) => {
-                    if (commitError) {
-                        return db.rollback(() => {
-                            res.status(500).json({ status: 'erro', erro: 'Erro ao concluir a reserva.' });
-                        });
-                    }
-                    res.status(201).json({ 
-                        status: 'sucesso', 
-                        mensagem: 'Cliente cadastrado e horário agendado com sucesso!' 
-                    });
-                });
-            });
+        const [resultadoCliente] = await connection.query(sqlCliente, [
+            cliente_nome, telefone, email, endereco, cpf, cidade, cep
+        ]);
+        await connection.query(sqlAgenda, [data_agenda, Number(id_servico), resultadoCliente.insertId]);
+        await connection.commit();
+        transacaoIniciada = false;
+        return res.status(201).json({
+            status: 'sucesso',
+            mensagem: 'Cliente cadastrado e horário agendado com sucesso!'
         });
-    });
+    } catch (err) {
+        if (connection && transacaoIniciada) {
+            try {
+                await connection.rollback();
+            } catch (erroRollback) {
+                console.error('Erro ao desfazer reserva incompleta:', erroRollback);
+            }
+        }
+        console.error('Erro ao salvar reserva:', err);
+        return res.status(500).json({ status: 'erro', erro: 'Não foi possível salvar a reserva.' });
+    } finally {
+        if (connection) {
+            if (bloqueioAdquirido) {
+                try {
+                    await connection.query('SELECT RELEASE_LOCK(?)', [nomeBloqueio]);
+                } catch (erroLiberacao) {
+                    console.error('Erro ao liberar bloqueio do horário:', erroLiberacao);
+                }
+            }
+            connection.release();
+        }
+    }
 });
 const porta = Number(process.env.PORT) || 3000;
 app.listen(porta, () => {

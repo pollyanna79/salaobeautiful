@@ -68,6 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
         inputData.max = formatarDataLocal(dataMaxima);
 
         selectServico.addEventListener('change', () => {
+            config.indiceConsulta = (config.indiceConsulta || 0) + 1;
             const opcaoSelecionada = selectServico.options[selectServico.selectedIndex];
             const chave = opcaoSelecionada.dataset.chave;
             const indice = config.indicesPorChave[chave];
@@ -88,7 +89,9 @@ document.addEventListener('DOMContentLoaded', () => {
             btnConfirmar.dataset.hora = '';
         });
 
-        function gerarHorarios(dataStr) {
+        async function gerarHorarios(dataStr) {
+            const indiceConsulta = (config.indiceConsulta || 0) + 1;
+            config.indiceConsulta = indiceConsulta;
             gridHorarios.replaceChildren();
             if (!dataStr) return;
 
@@ -108,24 +111,57 @@ document.addEventListener('DOMContentLoaded', () => {
             const horaInicio = diaSemana === 0 || diaSemana === 6 ? 10 : 9;
             const horaFim = diaSemana === 0 || diaSemana === 6 ? 15 : 18;
 
+            if (!selectServico.value) return;
+            mostrarMensagem(gridHorarios, 'Verificando horários disponíveis...');
+            let horariosOcupados;
+            try {
+                const parametros = new URLSearchParams({
+                    id_servico: selectServico.value,
+                    data: dataStr
+                });
+                const response = await fetch(`http://localhost:3000/horarios_ocupados?${parametros}`);
+                const resultado = await response.json();
+                if (!response.ok) {
+                    throw new Error(resultado.erro || 'Não foi possível consultar os horários.');
+                }
+                if (indiceConsulta !== config.indiceConsulta) return;
+                horariosOcupados = new Set(resultado.horarios);
+            } catch (error) {
+                if (indiceConsulta !== config.indiceConsulta) return;
+                console.error('Erro ao consultar horários ocupados:', error);
+                mostrarMensagem(gridHorarios, 'Não foi possível verificar os horários agora. Tente novamente.', true);
+                return;
+            }
+
+            gridHorarios.replaceChildren();
+
             for (let hora = horaInicio; hora < horaFim; hora += 1) {
                 if (hora === 13 || (dataStr === dataHoje && hora < horaMinima)) continue;
 
                 const botaoHora = document.createElement('button');
                 botaoHora.className = 'hora-btn';
                 botaoHora.type = 'button';
-                botaoHora.textContent = `${String(hora).padStart(2, '0')}:00`;
+                const horario = `${String(hora).padStart(2, '0')}:00`;
+                const ocupado = horariosOcupados.has(horario);
+                botaoHora.textContent = ocupado ? `${horario} · Ocupado` : horario;
+                botaoHora.disabled = ocupado;
+                if (ocupado) {
+                    botaoHora.classList.add('ocupado');
+                    botaoHora.setAttribute('aria-label', `${horario}, horário ocupado`);
+                }
                 botaoHora.addEventListener('click', () => {
                     gridHorarios.querySelectorAll('.hora-btn').forEach((botao) => botao.classList.remove('selected'));
                     botaoHora.classList.add('selected');
                     btnConfirmar.classList.remove('hidden');
-                    btnConfirmar.dataset.hora = botaoHora.textContent;
+                    btnConfirmar.dataset.hora = horario;
                 });
                 gridHorarios.appendChild(botaoHora);
             }
 
-            if (!gridHorarios.querySelector('.hora-btn')) {
-                mostrarMensagem(gridHorarios, 'Não há horários disponíveis para esta data.');
+            if (!gridHorarios.querySelector('.hora-btn:not(:disabled)')) {
+                const mensagem = document.createElement('p');
+                mensagem.textContent = 'Não há horários disponíveis para esta data.';
+                gridHorarios.appendChild(mensagem);
             }
         }
 
@@ -221,25 +257,6 @@ document.addEventListener('DOMContentLoaded', () => {
             ...agendamentoPendente
         };
 
-        const cidadesAtendidas = new Set([
-            'maua',
-            'santo andre',
-            'capuava',
-            'sao bernardo',
-            'sao bernado',
-            'sao bernardo do campo',
-            'sao bernado do campo',
-            'diadema',
-            'ribeirao pires',
-            'sao caetano',
-            'sao caetano do sul'
-        ]);
-        const cidadeNormalizada = dados.cidade
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .trim()
-            .toLowerCase()
-            .replace(/\s+/g, ' ');
         const nomeCompletoValido = /^[\p{L}][\p{L}\p{M}\s'.-]{1,99}$/u.test(dados.cliente_nome)
             && dados.cliente_nome.split(/\s+/).length >= 2;
         const emailValido = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(dados.email);
@@ -260,12 +277,6 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('cli-cep').focus();
             return;
         }
-        if (!cidadesAtendidas.has(cidadeNormalizada)) {
-            mostrarMensagem(erroAgendamento, 'Sentimos muito, mas não podemos te atender devido à distância 😔. Atendemos Mauá, Santo André, Capuava, São Bernardo do Campo, Diadema, Ribeirão Pires e São Caetano do Sul.', true);
-            document.getElementById('cli-cidade').focus();
-            return;
-        }
-
         const botaoConfirmar = formColeta.querySelector('button[type="submit"]');
         if (botaoConfirmar) botaoConfirmar.disabled = true;
         try {
