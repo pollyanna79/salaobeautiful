@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<<<<<<< HEAD
     <meta name="theme-color" content="#382b35">
     <meta name="description" content="Agende seus serviços de beleza na BeautifulPolly. Manicure, sobrancelhas, cabelo, maquiagem e penteados.">
     <title>BeautifulPolly | Beleza e bem-estar</title>
@@ -227,11 +228,199 @@
                 <label class="sr-only" for="cli-cep">CEP</label>
                 <input type="text" id="cli-cep" placeholder="CEP (00000-000)" autocomplete="postal-code" inputmode="numeric" maxlength="9" pattern="[0-9]{5}-?[0-9]{3}" required>
                 <p id="erro-agendamento" class="mensagem-erro" role="alert" aria-live="assertive"></p>
+=======
+    <meta name="theme-color" content="#26221f">
+    <title>Beautiful Polly | Beleza e cuidado</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="manicure.css">
+</head>
+<body>
+    <header class="container-topo">
+        <nav class="topo-nav" aria-label="Navegação principal">
+            <a class="marca" href="#" aria-label="Beautiful Polly, início">
+                <span class="marca-simbolo">BP</span>
+                <span>Beautiful <strong>Polly</strong></span>
+            </a>
+            <a class="nav-link" href="#servicos">Nossos serviços</a>
+            <button id="btn-consultar-reserva" class="btn-secondary" type="button">Consultar reserva</button>
+        </nav>
+        <div class="hero-conteudo">
+            <p class="eyebrow">BELEZA, CUIDADO E BEM-ESTAR</p>
+            <h1>Seu momento de <em>se sentir linda.</em></h1>
+            <p>Realce sua beleza com profissionais que cuidam de cada detalhe.</p>
+            <a class="btn-primary hero-cta" href="#servicos">Conheça os serviços <span aria-hidden="true">↓</span></a>
+            <p class="hero-local">Atendimento em Mauá e cidades próximas</p>
+        </div>
+    </header>
+
+    <main>
+        <section class="intro" id="servicos">
+            <p class="eyebrow">BEAUTIFUL POLLY</p>
+            <h2>Beleza feita para você</h2>
+            <p>Escolha seu cuidado, veja os horários e agende com praticidade.</p>
+            <div id="api-status" class="api-status" role="status" aria-live="polite">Carregando serviços...</div>
+        </section>
+
+        <div class="containers">
+            <section class="container-servico" id="secao-manicure">
+                <div class="service-heading"><span class="service-icon" aria-hidden="true">✦</span><div><p class="eyebrow">MÃOS & PÉS</p><h2>Manicure e pedicure</h2></div></div>
+                <div class="form-group">
+                    <label for="servico-unha">Escolha seu serviço</label>
+                    <select id="servico-unha" data-service-group="manicure" disabled><option value="">Carregando serviços...</option></select>
+                </div>
+                <div id="agendamento-unha" class="agendamento-container hidden">
+                    <div class="form-group">
+                        <label for="data-unha">Escolha a data</label>
+                        <input type="date" id="data-unha">
+                    </div>
+                    <div id="horarios-unha" class="horarios-grid" aria-live="polite"></div>
+                    <button id="btn-agendar-unha" class="btn-primary hidden" type="button">Continuar agendamento</button>
+                </div>
+                <section class="galeria-servicos" aria-label="Galeria de manicure e pedicure">
+                    <h3>Inspire-se</h3>
+                    <div class="carousel-container" id="carousel-unhas">
+                        <button class="carousel-btn prev" type="button" aria-label="Imagem anterior">‹</button>
+                        <div class="carousel-slide-wrapper"><div class="carousel-slides">
+                            <article class="slide"><img src="https://i.pinimg.com/originals/7d/c9/d7/7dc9d7f2c3acbea8d599c0aea354a5a6.jpg" alt="Unha decorada clássica"><span class="nome-servico">Unha decorada</span></article>
+                            <article class="slide"><img src="https://unhadecorada.site/wp-content/uploads/2021/01/unhas-p%C3%A9-e-m%C3%A3o-cores-diferentes-8-768x768.jpg" alt="Pé e mão em cores diferentes"><span class="nome-servico">Pé e mão</span></article>
+                            <article class="slide"><img src="https://tse1.mm.bing.net/th/id/OIP.oaQi8_VGrPEbTmiQxxJEdgHaHa?r=0&rs=1&pid=ImgDetMain&o=7&rm=3" alt="Esmaltação para os pés"><span class="nome-servico">Pé</span></article>
+                            <article class="slide"><img src="https://tse1.explicit.bing.net/th/id/OIP.O8uq1WbGVQH853PHP3Tw-gHaE7?r=0&rs=1&pid=ImgDetMain&o=7&rm=3" alt="Esmaltação das mãos"><span class="nome-servico">Mão</span></article>
+                            <article class="slide"><img src="https://www.dicasdemulher.com.br/wp-content/uploads/2019/05/modelos-de-unhas-46.jpg" alt="Unhas em gel com acabamento natural"><span class="nome-servico">Unha em gel</span></article>
+                            <article class="slide"><img src="https://d33wubrfki0l68.cloudfront.net/bc0de794ed2656f212f29f119ae03c57b49b279e/472db/static/b194f6e69cbf21151286e770e3fdc54b/b5cea/unha-fibra-de-vidro-glitter.png" alt="Unhas de fibra com glitter"><span class="nome-servico">Unha de fibra</span></article>
+                            <article class="slide"><img src="https://static.vecteezy.com/ti/fotos-gratis/p2/22372545-manicure-e-unha-extensao-com-acrilico-e-gel-a-projeto-e-fez-com-reflexivo-gel-esmaltes-foto.jpg" alt="Unhas de acrílico decoradas"><span class="nome-servico">Unha de acrílico</span></article>
+                        </div></div>
+                        <button class="carousel-btn next" type="button" aria-label="Próxima imagem">›</button>
+                    </div>
+                </section>
+            </section>
+
+            <section class="container-servico" id="secao-sobrancelha">
+                <div class="service-heading"><span class="service-icon" aria-hidden="true">✧</span><div><p class="eyebrow">OLHAR</p><h2>Sobrancelhas</h2></div></div>
+                <div class="form-group">
+                    <label for="servico-sobrancelha">Escolha seu serviço</label>
+                    <select id="servico-sobrancelha" data-service-group="sobrancelha" disabled><option value="">Carregando serviços...</option></select>
+                </div>
+                <div id="agendamento-sobrancelha" class="agendamento-container hidden">
+                    <div class="form-group">
+                        <label for="data-sobrancelha">Escolha a data</label>
+                        <input type="date" id="data-sobrancelha">
+                    </div>
+                    <div id="horarios-sobrancelha" class="horarios-grid" aria-live="polite"></div>
+                    <button id="btn-agendar-sobrancelha" class="btn-primary hidden" type="button">Continuar agendamento</button>
+                </div>
+                <section class="galeria-servicos" aria-label="Galeria de sobrancelhas">
+                    <h3>Detalhes que fazem a diferença</h3>
+                    <div class="carousel-container" id="carousel-sobrancelhas">
+                        <button class="carousel-btn prev" type="button" aria-label="Imagem anterior">‹</button>
+                        <div class="carousel-slide-wrapper"><div class="carousel-slides">
+                            <article class="slide"><img src="https://i0.wp.com/priflor.com/wp-content/uploads/2023/02/esteticista-trabalhando-nas-sobrancelhas-de-uma-cliente-scaled.jpg?resize=2048%2C1363&ssl=1" alt="Procedimento de design de sobrancelhas"><span class="nome-servico">Design</span></article>
+                            <article class="slide"><img src="https://th.bing.com/th/id/R.eb1fa3112455b542e28cdff7898caa32?rik=h6uIV9yt2qInuQ&pid=ImgRaw&r=0" alt="Sobrancelhas com henna"><span class="nome-servico">Henna</span></article>
+                            <article class="slide"><img src="https://i.pinimg.com/originals/10/19/d6/1019d602d259ad3b92dc5f89d6e8680e.jpg" alt="Sobrancelha com microblading"><span class="nome-servico">Microblading</span></article>
+                            <article class="slide"><img src="https://casaeconstrucao.org/wp-content/uploads/2021/06/15-resultado-de-sobrancelha-fio-a-fio.jpg" alt="Sobrancelhas fio a fio"><span class="nome-servico">Fio a fio</span></article>
+                        </div></div>
+                        <button class="carousel-btn next" type="button" aria-label="Próxima imagem">›</button>
+                    </div>
+                </section>
+            </section>
+
+            <section class="container-servico" id="secao-maquiagem">
+                <div class="service-heading"><span class="service-icon" aria-hidden="true">✧</span><div><p class="eyebrow">PRODUÇÃO ESPECIAL</p><h2>Maquiagem</h2></div></div>
+                <p class="service-description">Produções para festas, formaturas e o grande dia.</p>
+                <div class="form-group">
+                    <label for="servico-maquiagem">Escolha seu estilo</label>
+                    <select id="servico-maquiagem" data-service-group="maquiagem" disabled><option value="">Carregando serviços...</option></select>
+                </div>
+                <div id="agendamento-maquiagem" class="agendamento-container hidden">
+                    <div class="form-group">
+                        <label for="data-maquiagem">Escolha a data</label>
+                        <input type="date" id="data-maquiagem">
+                    </div>
+                    <div id="horarios-maquiagem" class="horarios-grid" aria-live="polite"></div>
+                    <button id="btn-agendar-maquiagem" class="btn-primary hidden" type="button">Continuar agendamento</button>
+                </div>
+                <section class="galeria-servicos" aria-label="Galeria de maquiagens">
+                    <h3>Maquiagens para cada ocasião</h3>
+                    <div class="carousel-container" id="carousel-maquiagem">
+                        <button class="carousel-btn prev" type="button" aria-label="Imagem anterior">‹</button>
+                        <div class="carousel-slide-wrapper"><div class="carousel-slides">
+                            <article class="slide"><img src="https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=900&q=85" alt="Maquiagem social sofisticada"><span class="nome-servico">Social</span></article>
+                            <article class="slide"><img src="https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=900&q=85" alt="Produção de maquiagem para noiva"><span class="nome-servico">Noiva</span></article>
+                            <article class="slide"><img src="https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?auto=format&fit=crop&w=900&q=85" alt="Maquiagem para debutante"><span class="nome-servico">Debutante</span></article>
+                        </div></div>
+                        <button class="carousel-btn next" type="button" aria-label="Próxima imagem">›</button>
+                    </div>
+                </section>
+            </section>
+
+            <section class="container-servico" id="secao-cabelos">
+                <div class="service-heading"><span class="service-icon" aria-hidden="true">✦</span><div><p class="eyebrow">CORTE, COR & ESTILO</p><h2>Cabelos</h2></div></div>
+                <p class="service-description">Do penteado à cor iluminada: encontre seu próximo visual.</p>
+                <div class="form-group">
+                    <label for="servico-cabelos">Escolha seu serviço</label>
+                    <select id="servico-cabelos" data-service-group="cabelos" disabled><option value="">Carregando serviços...</option></select>
+                </div>
+                <div id="agendamento-cabelos" class="agendamento-container hidden">
+                    <div class="form-group">
+                        <label for="data-cabelos">Escolha a data</label>
+                        <input type="date" id="data-cabelos">
+                    </div>
+                    <div id="horarios-cabelos" class="horarios-grid" aria-live="polite"></div>
+                    <button id="btn-agendar-cabelos" class="btn-primary hidden" type="button">Continuar agendamento</button>
+                </div>
+                <section class="galeria-servicos" aria-label="Galeria de cabelos">
+                    <h3>Inspire-se para mudar</h3>
+                    <div class="carousel-container" id="carousel-cabelos">
+                        <button class="carousel-btn prev" type="button" aria-label="Imagem anterior">‹</button>
+                        <div class="carousel-slide-wrapper"><div class="carousel-slides">
+                            <article class="slide"><img src="https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?auto=format&fit=crop&w=900&q=85" alt="Penteado elegante para ocasião especial"><span class="nome-servico">Penteados</span></article>
+                            <article class="slide"><img src="https://images.unsplash.com/photo-1519699047748-de8e457a634e?auto=format&fit=crop&w=900&q=85" alt="Cabelo loiro com mechas iluminadas"><span class="nome-servico">Loiro iluminado e luzes</span></article>
+                            <article class="slide"><img src="https://images.unsplash.com/photo-1595476108010-b4d1f102b1b1?auto=format&fit=crop&w=900&q=85" alt="Cabelo castanho com morena iluminada"><span class="nome-servico">Morena iluminada</span></article>
+                            <article class="slide"><img src="https://images.unsplash.com/photo-1560869713-7d0a29430803?auto=format&fit=crop&w=900&q=85" alt="Corte de cabelo moderno em camadas"><span class="nome-servico">Cortes</span></article>
+                        </div></div>
+                        <button class="carousel-btn next" type="button" aria-label="Próxima imagem">›</button>
+                    </div>
+                </section>
+            </section>
+        </div>
+    </main>
+
+    <div id="modal-agendamento" class="modal hidden" aria-hidden="true">
+        <div class="modal-conteudo" role="dialog" aria-modal="true" aria-labelledby="titulo-modal-agendamento">
+            <button class="modal-fechar" type="button" aria-label="Fechar">&times;</button>
+            <p class="eyebrow">SÓ MAIS UM PASSO</p>
+            <h2 id="titulo-modal-agendamento">Seus dados</h2>
+            <form id="form-coleta-dados">
+                <label for="cli-nome">Nome completo</label>
+                <input type="text" id="cli-nome" autocomplete="name" required>
+                <label for="cli-tel">Telefone com DDD</label>
+                <input type="tel" id="cli-tel" autocomplete="tel" required>
+                <label for="cli-email">E-mail</label>
+                <input type="email" id="cli-email" autocomplete="email" required>
+                <label for="cli-end">Endereço</label>
+                <input type="text" id="cli-end" autocomplete="street-address" required>
+                <label for="cli-cpf">CPF</label>
+                <input type="text" id="cli-cpf" inputmode="numeric" maxlength="14" placeholder="000.000.000-00" required>
+                <label for="cli-cidade">Cidade / região</label>
+                <select id="cli-cidade" required>
+                    <option value="" selected disabled>Selecione sua cidade</option>
+                    <option value="Mauá">Mauá</option>
+                    <option value="Santo André">Santo André</option>
+                    <option value="São Caetano do Sul">São Caetano do Sul</option>
+                    <option value="Ribeirão Pires">Ribeirão Pires</option>
+                    <option value="Capuava">Capuava</option>
+                </select>
+                <label for="cli-cep">CEP</label>
+                <input type="text" id="cli-cep" inputmode="numeric" autocomplete="postal-code" maxlength="9" placeholder="00000-000" required>
+                <p class="form-hint">Atendemos Mauá, Santo André, São Caetano do Sul, Ribeirão Pires e Capuava.</p>
+>>>>>>> 3d23365bc154635428577a2225d9f06a99bafe91
                 <button type="submit" class="btn-primary">Confirmar agendamento</button>
             </form>
         </div>
     </div>
 
+<<<<<<< HEAD
     <div id="modal-confirmacao" class="modal hidden" aria-hidden="true">
         <div class="modal-conteudo confirmacao-conteudo" role="dialog" aria-modal="true" aria-labelledby="titulo-confirmacao">
             <div class="confirmacao-icone" aria-hidden="true">✓</div>
@@ -261,11 +450,23 @@
                 <label for="consulta-identificador">Nome ou e-mail cadastrado</label>
                 <input type="text" id="consulta-identificador" autocomplete="name" placeholder="Ex.: Maria ou maria@email.com" required>
                 <button class="btn-primary" type="submit">Buscar reservas</button>
+=======
+    <div id="modal-consulta" class="modal hidden" aria-hidden="true">
+        <div class="modal-conteudo" role="dialog" aria-modal="true" aria-labelledby="titulo-modal-consulta">
+            <button id="fechar-consulta" class="modal-fechar" type="button" aria-label="Fechar">&times;</button>
+            <p class="eyebrow">BEAUTIFUL POLLY</p>
+            <h2 id="titulo-modal-consulta">Consultar reserva</h2>
+            <form id="form-consulta">
+                <label for="consulta-nome">Informe seu nome</label>
+                <input type="text" id="consulta-nome" required>
+                <button class="btn-primary" type="submit">Buscar reserva</button>
+>>>>>>> 3d23365bc154635428577a2225d9f06a99bafe91
             </form>
             <div id="resultado-consulta" aria-live="polite"></div>
         </div>
     </div>
 
+<<<<<<< HEAD
     <footer class="site-footer" id="contato">
         <div class="footer-main">
             <div class="footer-brand">
@@ -293,5 +494,44 @@
         <div class="footer-bottom"><span>© 2026 BeautifulPolly. Todos os direitos reservados.</span><a href="#inicio">Voltar ao topo ↑</a></div>
     </footer>
     <script src="manicure.js?v=20261109-agendamentos"></script>
+=======
+    <div id="modal-obrigado" class="modal hidden" aria-hidden="true">
+        <div class="modal-conteudo obrigado-conteudo" role="dialog" aria-modal="true" aria-labelledby="titulo-obrigado">
+            <p class="obrigado-emoji" aria-hidden="true">💖</p>
+            <p class="eyebrow">AGENDAMENTO REALIZADO</p>
+            <h2 id="titulo-obrigado">Obrigado pela preferência!</h2>
+            <p class="obrigado-confirmacao">Enviaremos um e-mail para confirmar os dados do seu agendamento.</p>
+            <section class="politica-agendamento" aria-labelledby="titulo-politica">
+                <h3 id="titulo-politica">Para que seu atendimento seja perfeito</h3>
+                <ul>
+                    <li>Chegue com até 10 minutos de antecedência.</li>
+                    <li>Em caso de atraso, avise o salão. Atrasos podem reduzir o tempo do serviço ou exigir remarcação.</li>
+                    <li>Para cancelar ou remarcar, avise com pelo menos 24 horas de antecedência.</li>
+                    <li>O não comparecimento sem aviso poderá exigir novo agendamento conforme disponibilidade.</li>
+                </ul>
+            </section>
+            <button id="btn-voltar-inicio" class="btn-primary" type="button">Voltar à página inicial</button>
+        </div>
+    </div>
+
+    <footer>
+        <a class="marca marca-footer" href="#"><span class="marca-simbolo">BP</span><span>Beautiful <strong>Polly</strong></span></a>
+        <p>Beleza e cuidado em Mauá e região.</p>
+        <address class="footer-address">Av. Bonita, 123 · Mauá/SP</address>
+        <div class="footer-social" aria-label="Redes sociais">
+            <a href="https://www.instagram.com/popo7293/" target="_blank" rel="noopener noreferrer" aria-label="Instagram: popo7293" title="Instagram: popo7293">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"></rect><circle cx="12" cy="12" r="4"></circle><circle class="icon-fill" cx="18" cy="6" r="1"></circle></svg>
+            </a>
+            <a href="https://www.facebook.com/share/1FKnjUipRu/" target="_blank" rel="noopener noreferrer" aria-label="Facebook: Polly Ydhdhaj" title="Facebook: Polly Ydhdhaj">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path class="icon-fill" d="M13.5 21v-8h2.7l.4-3h-3.1V8.1c0-.9.3-1.5 1.6-1.5h1.7V3.9c-.3 0-1.4-.1-2.6-.1-2.6 0-4.4 1.6-4.4 4.5V10H7v3h2.8v8h3.7Z"></path></svg>
+            </a>
+            <a href="https://wa.me/5511999999999" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp" title="WhatsApp">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 11.7a8.4 8.4 0 0 1-12.4 7.4L3 20.5l1.5-4.9a8.4 8.4 0 1 1 16-3.9Z"></path><path d="M8.2 7.8c.2-.4.4-.4.7-.4h.5c.2 0 .4.1.5.4l.8 1.9c.1.2.1.4-.1.6l-.6.7c-.2.2-.2.4-.1.6.4.7 1.1 1.4 1.8 1.8.2.1.4.1.6-.1l.7-.8c.2-.2.4-.2.6-.1l1.8.9c.2.1.4.2.4.4s-.1 1-.7 1.5c-.5.5-1.2.7-1.8.6-.7-.1-1.6-.4-2.7-1.1-1.4-.9-2.5-2.3-2.8-2.7-.3-.4-.8-1.2-.8-2.1s.5-1.7.7-2.1Z"></path></svg>
+            </a>
+        </div>
+        <p class="footer-local"><strong>Cidades atendidas:</strong> Mauá · Santo André · São Caetano do Sul · Ribeirão Pires · Capuava</p>
+    </footer>
+    <script src="manicure.js"></script>
+>>>>>>> 3d23365bc154635428577a2225d9f06a99bafe91
 </body>
 </html>
