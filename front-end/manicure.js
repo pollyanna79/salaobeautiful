@@ -1,4 +1,6 @@
-const apiBase = 'https://cinemark-z3wn.onrender.com';
+﻿
+const apiBase = 'https://salaobeautiful.onrender.com';
+
 
 document.addEventListener('DOMContentLoaded', () => {
     const carrosseis = new Map();
