@@ -7,7 +7,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-<<<<<<< HEAD
+
 // 1. Criando a ponte (conexão) com o MySQL
 const db = mysql.createPool({
     host: process.env.DB_HOST ,
@@ -232,7 +232,7 @@ app.post('/tbl_clientes', async (req, res) => {
     const sqlCliente = `
         INSERT INTO tbl_clientes (cliente_nome, telefone, email, endereco, cpf, cidade, cep) 
         VALUES (?, ?, ?, ?, ?, ?, ?)
-=======
+
 const db = mysql.createPool({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
@@ -263,7 +263,7 @@ app.get('/servicos', (req, res) => {
         SELECT id_servico, nome_servico, preco, duracao_estimada, id_funcionario
         FROM servicos
         ORDER BY nome_servico
->>>>>>> 3d23365bc154635428577a2225d9f06a99bafe91
+
     `;
     const sqlAgenda = `
         INSERT INTO agenda_cliente (data_agenda, id_servico, id_cliente)
@@ -274,7 +274,7 @@ app.get('/servicos', (req, res) => {
     let bloqueioAdquirido = false;
     let transacaoIniciada = false;
 
-<<<<<<< HEAD
+
     try {
         connection = await db.promise().getConnection();
         const [bloqueios] = await connection.query('SELECT GET_LOCK(?, 10) AS adquirido', [nomeBloqueio]);
@@ -333,7 +333,7 @@ app.get('/servicos', (req, res) => {
             connection.release();
         }
     }
-=======
+
     db.query(sql, (error, services) => {
         if (error) {
             console.error('Erro ao carregar serviços do banco:', error);
@@ -527,7 +527,7 @@ app.post('/tbl_clientes', (req, res) => {
 const port = Number(process.env.PORT) || 3000;
 const server = app.listen(port, () => {
     console.log(`Servidor rodando na porta ${port}`);
->>>>>>> 3d23365bc154635428577a2225d9f06a99bafe91
+
 });
 
 module.exports = { app, server };
